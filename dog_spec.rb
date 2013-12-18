@@ -1,4 +1,5 @@
 require './dog'
+require 'debugger'
 
 describe Dog do
   context "database operations" do

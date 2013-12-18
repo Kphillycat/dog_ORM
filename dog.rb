@@ -2,12 +2,13 @@ require 'mysql2'
 require 'debugger'
  
 class Dog
-  attr_accessor :id, :name, :color
+  attr_accessor :name, :color
+  attr_reader :id
   @@db = Mysql2::Client.new(:host => "localhost", :username => "root", :database => "dogs")
 
-  def initialize(name, color)
-    @name = name
-    @color = color
+  def initialize
+    @name
+    @color
   end
 
   def db
@@ -19,11 +20,11 @@ class Dog
   end
 
   def saved?
-    !id.nil?
+    !self.id.nil?
   end
 
   def unsaved?
-    id.nil?
+    self.id.nil?
   end
 
   def mark_saved
@@ -34,6 +35,18 @@ class Dog
     db.query("INSERT INTO dogs (name,color) 
       VALUES ('#{name}','#{color}')")
     mark_saved
+    saved?
+  end
+
+  def update
+    if unsaved?
+      save
+    else
+     db.query("UPDATE dogs
+      SET name = '#{name}', color = '#{color}'
+      WHERE id = #{id}")
+    end
+    saved?
   end
 
   def save
@@ -44,28 +57,23 @@ class Dog
     end
   end
 
-  def update
-    if unsaved?
-      save
-    else
-     db.query("UPDATE dogs
-      SET name = '#{name}', color = '#{color}'
-      WHERE id = #{id}")
-   end
+  def self.create_new_obj(id, row)
+    dog = Dog.new
+    dog.name = row.first["name"]
+    dog.color = row.first["color"]
+    debugger
+    dog.id = id
+    dog
   end
-
-  
 
   def self.find(id)
     results = self.db.query("SELECT * 
       FROM dogs
       WHERE id = #{id}")
-    dog = Dog.new(results.first["name"], results.first["color"])
-    dog.id = id
-    dog
-  end
+    self.create_new_obj(id, results)
+ end
 
-  def self.create_new_obj(rows)
+  def self.create_new_objects(rows)
     dogs = []
     rows.each do |dog|
       dogs << Dog.new(dog["name"],dog["color"])
@@ -78,8 +86,7 @@ class Dog
     results = db.query("SELECT *
       FROM dogs
       WHERE name = '#{value}'")
-    debugger
-    self.create_new_obj(results)
+    self.create_new_objects(results)
   end
 
   def self.delete(id)
@@ -87,7 +94,15 @@ class Dog
       WHERE id = #{id}")
   end
 
- 
+  def self.attributes
+    ["name","color"]
+  end
+
+  private
+
+  def id=(id)
+    @id = id
+  end
 
 end
  
